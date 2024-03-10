@@ -1,6 +1,7 @@
 name: Android CI
 
-on: [push]
+on:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -12,16 +13,29 @@ jobs:
       uses: actions/checkout@v3
       with:
         submodules: true
+
     - name: Set up JDK 17
       uses: actions/setup-java@v3
       with:
         distribution: 'temurin'
         java-version: '17'
+
+    - name: Generate app keystore
+      run: |
+        echo "${{ secrets.JKS_BASE64 }}" | base64 -d > keystore
+        echo "storeFile=keystore" > signing.properties
+        echo "storePassword=${{ secrets.JKS_STORE_PASS }}" >> signing.properties
+        echo "keyPassword=${{ secrets.JKS_KEY_PASS }}" >> signing.properties
+        echo "keyAlias=${{ secrets.JKS_KEY_ALIAS }}" >> signing.properties
+
+    - name: Update App name
+      run: sed -i 's/Material Files/Files/g' app/src/main/res/values/strings.xml
+
     - name: Build with Gradle
-      run: ./gradlew assembleDebug lintVitalRelease
+      run: ./gradlew assembleRelease
+
     - name: Upload artifact
       uses: actions/upload-artifact@v3
       with:
-        name: app-debug.apk
-        path: app/build/outputs/apk/debug/app-debug.apk
-        retention-days: 10
+        name: app-release.apk
+        path: app/build/outputs/apk/release/app-release.apk
